@@ -1,0 +1,10 @@
+[package]
+name = "pct"
+version = "0.1.0"
+authors = ["Corey Richardson <corey@octayn.net>"]
+license = "BSL-1.0"
+repository = "https://github.com/cmr/pct"
+description = "Parser Construction Toolkit"
+
+[dependencies]
+typemap = "*"

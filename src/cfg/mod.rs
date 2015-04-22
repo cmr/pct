@@ -32,6 +32,8 @@
 //! other libraries to store arbitrary data in the `Cfg` without fear of clashing with other
 //! libraries.
 //!
+//! ɛ is represented as a rule with an empty rhs.
+//!
 //! # Freezing
 //!
 //! For efficiency, many algorithms may want to compute relations on the set of terminals,
@@ -47,7 +49,8 @@
 //! - Some sort of prefix trie might be nice to store the rules compactly. It seems that efficient
 //!   indexing would be challenging.
 
-
+pub mod marpa;
+pub mod util;
 
 /// A Symbol is either a non-terminal or a terminal.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -56,19 +59,55 @@ pub enum Symbol {
     Nonterminal(u32),
 }
 
-impl Symbol {
-    pub fn from_packed_u32(val: u32) -> Symbol {
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+/// A PackedSymbol is a more compact representation of a Symbol
+pub struct PackedSymbol(u32);
+
+impl PackedSymbol {
+    pub fn is_terminal(self) -> bool {
+        self.0 & (1 << 31) == 0
+    }
+
+    pub fn is_nonterminal(self) -> bool {
+        !self.is_terminal()
+    }
+}
+
+impl<'a> ::std::convert::From<&'a PackedSymbol> for Symbol {
+    fn from(v: &'a PackedSymbol) -> Symbol {
+        if v.is_terminal() {
+            Symbol::Terminal(v.0)
+        } else {
+            Symbol::Nonterminal(v.0 & !(1 << 31))
+        }
+    }
+}
+
+impl ::std::convert::From<PackedSymbol> for Symbol {
+    fn from(v: PackedSymbol) -> Symbol {
+        let val = v.0;
         if val & (1 << 31) == 0 {
             Symbol::Terminal(val & !(1 << 31))
         } else {
             Symbol::Nonterminal(val & !(1 << 31))
         }
     }
+}
 
-    pub fn to_packed_u32(self) -> u32 {
-        match self {
-            Symbol::Terminal(x) => x,
-            Symbol::Nonterminal(x) => x | (1 << 31),
+impl<'a> ::std::convert::From<&'a Symbol> for PackedSymbol {
+    fn from(v: &'a Symbol) -> PackedSymbol {
+        match *v {
+            Symbol::Terminal(x) => PackedSymbol(x),
+            Symbol::Nonterminal(x) => PackedSymbol(x | (1 << 31)),
+        }
+    }
+}
+
+impl ::std::convert::From<Symbol> for PackedSymbol {
+    fn from(v: Symbol) -> PackedSymbol {
+        match v {
+            Symbol::Terminal(x) => PackedSymbol(x),
+            Symbol::Nonterminal(x) => PackedSymbol(x | (1 << 31)),
         }
     }
 }
@@ -79,7 +118,7 @@ impl Symbol {
 /// where each rule can have at most 2^16 grammar symbols on the right-hand side.
 pub struct Cfg<T> {
     phantom: ::std::marker::PhantomData<T>,
-    rules: Vec<(u32, Vec<u32>)>,
+    rules: Vec<(PackedSymbol, Vec<PackedSymbol>)>,
     extra: ::typemap::TypeMap,
     start: usize,
     // why i32's? because trying to increment past 2^31 will cause an overflow error, which is
@@ -90,7 +129,7 @@ pub struct Cfg<T> {
 
 /// A Rule maps from a nonterminal to a sequence of symbols it can be replaced with.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Rule(usize);
+pub struct Rule(pub usize);
 
 /// A marker type indicating that a `Cfg` can be mutated.
 pub struct Mutable;
@@ -118,8 +157,8 @@ impl Cfg<Mutable> {
     }
 
     /// Add a rule to the grammar, `lhs -> rhs[0] rhs[1] ...`, returning a `Rule`.
-    pub fn add_rule(&mut self, lhs: Symbol, rhs: &[Symbol]) -> Rule {
-        self.rules.push((lhs.to_packed_u32(), rhs.iter().map(|x| x.to_packed_u32()).collect()));
+    pub fn add_rule<'a, L, R>(&mut self, lhs: L, rhs: &'a [R]) -> Rule where PackedSymbol: From<L> + From<&'a R>, {
+        self.rules.push((lhs.into(), rhs.iter().map(PackedSymbol::from).collect()));
         Rule(self.rules.len() - 1)
     }
 
@@ -154,21 +193,33 @@ impl<T> Cfg<T> {
     }
 
     /// Get a rule from the grammar.
-    pub fn get_rule(&self, r: Rule) -> Option<(Symbol, &[u32])> {
-        self.rules.get(r.0).map(|&(s, ref r)| (Symbol::from_packed_u32(s), &r[..]))
+    pub fn get_rule(&self, r: Rule) -> Option<(PackedSymbol, &[PackedSymbol])> {
+        self.rules.get(r.0).map(|&(s, ref r)| (s, &r[..]))
     }
 
     /// Number of terminals used by the grammar.
     ///
     /// Each integer from 0 to this number (exclusive) is a valid terminal.
-    pub fn terminals(&self) -> u32 {
+    pub fn num_terminals(&self) -> u32 {
         self.max_term as u32
     }
 
     /// Number of nonterminals used by the grammar.
     ///
     /// Each integer from 0 to this number (exclusive) is a valid nonterminal.
-    pub fn nonterminals(&self) -> u32 {
+    pub fn num_nonterminals(&self) -> u32 {
         self.max_nonterm as u32
+    }
+
+    /// Number of rules used by the grammar.
+    ///
+    /// Each `Rule(i)` from 0 to this number (exclusive) is a valid rule.
+    pub fn num_rules(&self) -> usize {
+        self.rules.len()
+    }
+
+    /// Iterator over all the rules in the grammar.
+    pub fn rules<'a>(&'a self) -> ::std::slice::Iter<'a, (PackedSymbol, Vec<PackedSymbol>)> {
+        self.rules.iter()
     }
 }

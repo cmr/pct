@@ -49,7 +49,6 @@
 //! - Some sort of prefix trie might be nice to store the rules compactly. It seems that efficient
 //!   indexing would be challenging.
 
-pub mod marpa;
 pub mod util;
 
 /// A Symbol is either a non-terminal or a terminal.

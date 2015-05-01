@@ -22,20 +22,22 @@ pub fn compute_nullability<T>(cfg: &mut Cfg<T>) {
                 nullable.insert(lhs);
                 queue.push_back(lhs);
             } else {
-                uses.entry(lhs).or_insert(Vec::new()).push(rhs);
                 let mut counts = HashMap::new();
                 for sym in rhs {
-                    *counts.entry(sym).or_insert(0) += 1;
+                    if sym.is_nonterminal() {
+                        *counts.entry(sym).or_insert(0) += 1;
+                        uses.entry(sym).or_insert(HashSet::new()).insert(rhs);
+                    }
                 }
-                rules.insert(rhs, (0, counts, rhs.len()));
+                rules.insert((lhs, rhs), (0, counts));
             }
         }
 
         while let Some(lhs) = queue.pop_front() {
-            for rule in uses.get(&lhs).unwrap_or(&Vec::new()) {
-                let &mut (ref mut count, ref counts, number_symbols) = rules.get_mut(rule).unwrap();
+            for &rule in uses.get(&lhs).unwrap_or(&HashSet::new()) {
+                let &mut (ref mut count, ref counts) = rules.get_mut(&(lhs, rule)).unwrap();
                 *count += *counts.get(&lhs).unwrap();
-                if *count == number_symbols {
+                if *count == rule.len() {
                     nullable.insert(lhs);
                     queue.push_back(lhs);
                 }

@@ -75,11 +75,7 @@ impl PackedSymbol {
 
 impl<'a> ::std::convert::From<&'a PackedSymbol> for Symbol {
     fn from(v: &'a PackedSymbol) -> Symbol {
-        if v.is_terminal() {
-            Symbol::Terminal(v.0)
-        } else {
-            Symbol::Nonterminal(v.0 & !(1 << 31))
-        }
+        Symbol::from(*v)
     }
 }
 
@@ -96,10 +92,7 @@ impl ::std::convert::From<PackedSymbol> for Symbol {
 
 impl<'a> ::std::convert::From<&'a Symbol> for PackedSymbol {
     fn from(v: &'a Symbol) -> PackedSymbol {
-        match *v {
-            Symbol::Terminal(x) => PackedSymbol(x),
-            Symbol::Nonterminal(x) => PackedSymbol(x | (1 << 31)),
-        }
+        PackedSymbol::from(*v)
     }
 }
 

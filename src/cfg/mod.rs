@@ -61,6 +61,18 @@ pub enum Symbol {
     Nonterminal(u32),
 }
 
+impl Symbol {
+    pub fn to_index(self) -> usize {
+        PackedSymbol::from(self).to_index()
+    }
+    pub fn is_terminal(self) -> bool {
+        if let Symbol::Terminal(_) = self { true } else { false }
+    }
+    pub fn is_nonterminal(self) -> bool {
+        if let Symbol::Nonterminal(_) = self { true } else { false }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 /// A PackedSymbol is a more compact representation of a Symbol
 pub struct PackedSymbol(u32);
@@ -139,8 +151,8 @@ pub struct Mutable;
 /// A marker type indicating that a `Cfg` can not be mutated.
 pub struct Frozen;
 
-pub const END_OF_INPUT: PackedSymbol = PackedSymbol(0);
-pub const EPSILON: PackedSymbol = PackedSymbol(1);
+pub static END_OF_INPUT: PackedSymbol = PackedSymbol(0);
+pub static EPSILON: PackedSymbol = PackedSymbol(1);
 
 impl Cfg<Mutable> {
     /// Construct a CFG for the empty language.
@@ -227,5 +239,21 @@ impl<T> Cfg<T> {
     /// Iterator over all the rules in the grammar.
     pub fn rules<'a>(&'a self) -> ::std::slice::Iter<'a, (PackedSymbol, Vec<PackedSymbol>)> {
         self.rules.iter()
+    }
+}
+
+pub trait Token {
+    fn to_terminal(&self) -> Symbol;
+}
+
+impl Token for Symbol {
+    fn to_terminal(&self) -> Symbol {
+        *self
+    }
+}
+
+impl Token for PackedSymbol {
+    fn to_terminal(&self) -> Symbol {
+        self.into()
     }
 }

@@ -92,7 +92,7 @@ fn compute_first_of_symbol<T>(cfg: &Cfg<T>, set: &mut HashSet<PackedSymbol>, sym
     }
 }
 
-pub fn compute_first_of<'a, T, R>(cfg: &mut Cfg<T>, seq: &'a [R]) -> HashSet<PackedSymbol> where PackedSymbol: From<&'a R> {
+pub fn compute_first_of<'a, T, R>(cfg: &Cfg<T>, seq: &'a [R]) -> HashSet<PackedSymbol> where PackedSymbol: From<&'a R> {
     let mut first = HashSet::new();
     for sym in seq {
         if !compute_first_of_symbol(cfg, &mut first, sym.into()) {
@@ -115,11 +115,11 @@ pub fn compute_follow(cfg: &mut Cfg<super::Frozen>) {
         for &(lhs, ref rhs) in cfg.rules() {
             for loc in 0..rhs.len() {
                 if rhs[loc].is_nonterminal() {
-                    let first = compute_first_of(cfg, rhs[loc+1..]);
+                    let mut first = compute_first_of(cfg, &rhs[loc+1..]);
                     if first.remove(&super::EPSILON) || loc == rhs.len()-1 {
-                        stable_relation.push((lhs, rhs[loc])):
+                        stable_relation.push((lhs, rhs[loc]));
                     }
-                    follow[rhs[loc]].extend(first);
+                    follow[rhs[loc].to_index()].extend(first);
                 }
             }
         }
@@ -128,8 +128,10 @@ pub fn compute_follow(cfg: &mut Cfg<super::Frozen>) {
         while !stable {
             let old = follow.clone();
             for &(from, to) in &stable_relation {
-                follow[to].extend(follow[from])
+                let copied = follow[from.to_index()].clone();
+                follow[to.to_index()].extend(copied);
             }
+            stable = old == follow;
         }
     }
     cfg.mut_extra().insert::<Follow>(follow);

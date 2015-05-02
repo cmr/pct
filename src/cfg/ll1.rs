@@ -12,11 +12,9 @@ pub struct Table {
 pub fn generate_table(cfg: &mut Cfg<Frozen>) -> Table {
     compute_follow(cfg);
     let follow = cfg.extra().get::<Follow>().unwrap();
-    println!("{:?}", follow);
 
     let mut stuff = vec![vec![None; cfg.max_term as usize]; cfg.max_nonterm as usize];
     for (i, &(lhs, ref rhs)) in cfg.rules().enumerate() {
-        println!("Processing rule {:?}: {:?} -> {:?}", i, lhs, rhs);
         let first = compute_first_of(cfg, rhs);
         for term in &first {
             let slot = &mut stuff[lhs.to_index()][term.to_index()];
@@ -55,13 +53,13 @@ pub fn parse(tab: &Table, mut s: Vec<&Token>) -> Vec<Rule> {
     let mut stack = vec![END_OF_INPUT.into(), tab.start];
     let mut idx = 0;
     let mut a = s[idx];
-    while (*stack.last().unwrap() != END_OF_INPUT.into()) {
-        if (*stack.last().unwrap() == a.to_terminal().into()) { stack.pop(); a = s[idx+1]; idx += 1; }
-        else if (stack.last().unwrap().is_terminal()) { panic!("Parse error!"); }
-        else if (tab.stuff[stack.last().unwrap().to_index()][a.to_terminal().to_index()].is_none()) { panic!("Parse error!") }
+    while *stack.last().unwrap() != END_OF_INPUT.into() {
+        if *stack.last().unwrap() == a.to_terminal().into() { stack.pop(); a = s[idx+1]; idx += 1; }
+        else if stack.last().unwrap().is_terminal() { panic!("Parse error! Expected {:?}, found {:?}.", stack.last().unwrap(), a.to_terminal()) }
+        else if tab.stuff[stack.last().unwrap().to_index()][a.to_terminal().to_index()].is_none() { panic!("Parse error!") }
         else { // it's a nonterminal, and not an error!
             let rule_idx = tab.stuff[stack.last().unwrap().to_index()][a.to_terminal().to_index()].unwrap().0;
-            let &(lhs, ref rhs) = &tab.rules[rule_idx];
+            let &(_, ref rhs) = &tab.rules[rule_idx];
             derivation.push(Rule(rule_idx));
             stack.pop();
             for sym in rhs.iter().rev() {

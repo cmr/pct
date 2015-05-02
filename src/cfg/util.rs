@@ -47,3 +47,90 @@ pub fn compute_nullability<T>(cfg: &mut Cfg<T>) {
 
     cfg.mut_extra().insert::<Nullability>(nullable);
 }
+
+/*
+pub struct First;
+impl ::typemap::Key for First { type Value = HashMap<Vec<PackedSymbol>, HashSet<PackedSymbol>>; }
+
+pub fn compute_first_of_memoized<T>(cfg: &mut Cfg<T>, seq: Vec<PackedSymbol>) -> &HashSet<PackedSymbol> {
+    let sigh = seq.clone();
+
+    match cfg.mut_extra().entry::<First>().unwrap().entry(seq).or_insert_with(|| compute_first_of(cfg, &sigh)) {
+}
+*/
+
+// Returns true if we should keep looking in following symbols.
+fn compute_first_of_symbol<T>(cfg: &Cfg<T>, set: &mut HashSet<PackedSymbol>, sym: PackedSymbol) -> bool {
+    if sym.is_terminal() {
+        set.insert(sym);
+        if sym == super::EPSILON {
+            true
+        } else {
+            false
+        }
+    } else {
+        let mut first_eps = false;
+        for &(lhs, ref rhs) in cfg.rules() {
+            if lhs == sym {
+                let mut hs = HashSet::new();
+                let mut all_eps = true;
+                for sym in rhs {
+                    if !compute_first_of_symbol(cfg, &mut hs, *sym) {
+                        all_eps = false;
+                        set.extend(hs.drain());
+                        break;
+                    }
+                    set.extend(hs.drain());
+                }
+                if all_eps {
+                    set.insert(super::EPSILON);
+                    first_eps = true;
+                }
+            }
+        }
+        first_eps
+    }
+}
+
+pub fn compute_first_of<'a, T, R>(cfg: &mut Cfg<T>, seq: &'a [R]) -> HashSet<PackedSymbol> where PackedSymbol: From<&'a R> {
+    let mut first = HashSet::new();
+    for sym in seq {
+        if !compute_first_of_symbol(cfg, &mut first, sym.into()) {
+            println!("Ok, giving up after FIRST of {:?}", PackedSymbol::from(sym));
+            break;
+        }
+    }
+    first
+}
+
+pub struct Follow;
+impl ::typemap::Key for Follow { type Value = Vec<HashSet<PackedSymbol>>; }
+
+/// Computes the FOLLOW relation F : Nonterminal -> HashSet<Terminal>
+pub fn compute_follow(cfg: &mut Cfg<super::Frozen>) {
+    let mut follow = vec![HashSet::with_capacity(cfg.max_term as usize); cfg.max_nonterm as usize];
+    let mut stable_relation = Vec::new();
+    {
+        follow[cfg.rules[cfg.start].0.to_index()].insert(super::END_OF_INPUT); // Add $ to to FOLLOW(S)
+        for &(lhs, ref rhs) in cfg.rules() {
+            for loc in 0..rhs.len() {
+                if rhs[loc].is_nonterminal() {
+                    let first = compute_first_of(cfg, rhs[loc+1..]);
+                    if first.remove(&super::EPSILON) || loc == rhs.len()-1 {
+                        stable_relation.push((lhs, rhs[loc])):
+                    }
+                    follow[rhs[loc]].extend(first);
+                }
+            }
+        }
+        // so fast. wow. very efficient.
+        let mut stable = false;
+        while !stable {
+            let old = follow.clone();
+            for &(from, to) in &stable_relation {
+                follow[to].extend(follow[from])
+            }
+        }
+    }
+    cfg.mut_extra().insert::<Follow>(follow);
+}

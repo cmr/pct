@@ -50,6 +50,7 @@
 //!   indexing would be challenging.
 
 pub mod util;
+mod test;
 
 /// A Symbol is either a non-terminal or a terminal.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -70,6 +71,14 @@ impl PackedSymbol {
     pub fn is_nonterminal(self) -> bool {
         !self.is_terminal()
     }
+
+    pub fn to_index(self) -> usize {
+        (self.0 & !(1 << 31)) as usize
+    }
+}
+
+impl<'a> ::std::convert::From<&'a PackedSymbol> for PackedSymbol {
+    fn from(v: &'a PackedSymbol) -> PackedSymbol { *v }
 }
 
 impl<'a> ::std::convert::From<&'a PackedSymbol> for Symbol {
@@ -128,10 +137,13 @@ pub struct Mutable;
 /// A marker type indicating that a `Cfg` can not be mutated.
 pub struct Frozen;
 
+pub const END_OF_INPUT: PackedSymbol = PackedSymbol(0);
+pub const EPSILON: PackedSymbol = PackedSymbol(1);
+
 impl Cfg<Mutable> {
     /// Construct a CFG for the empty language.
     pub fn new() -> Cfg<Mutable> {
-        Cfg { phantom: ::std::marker::PhantomData, start: 0, rules: Vec::new(), max_nonterm: 0, max_term: 0, extra: ::typemap::TypeMap::new() }
+        Cfg { phantom: ::std::marker::PhantomData, start: 0, rules: Vec::new(), max_nonterm: 0, max_term: 2, extra: ::typemap::TypeMap::new() }
     }
 
     /// Add a nonterminal, returning the new grammar symbol that can be used.
@@ -149,7 +161,7 @@ impl Cfg<Mutable> {
     }
 
     /// Add a rule to the grammar, `lhs -> rhs[0] rhs[1] ...`, returning a `Rule`.
-    pub fn add_rule<'a, L, R>(&mut self, lhs: L, rhs: &'a [R]) -> Rule where PackedSymbol: From<L> + From<&'a R>, {
+    pub fn add_rule<'a, L, R>(&mut self, lhs: L, rhs: &'a [R]) -> Rule where PackedSymbol: From<L>, PackedSymbol: From<&'a R>, {
         self.rules.push((lhs.into(), rhs.iter().map(PackedSymbol::from).collect()));
         Rule(self.rules.len() - 1)
     }

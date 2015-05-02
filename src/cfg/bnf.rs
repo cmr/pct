@@ -13,10 +13,11 @@ pub fn from_str(bnf: &str) -> cfg::Cfg<cfg::Mutable> {
     let mut terms = HashMap::new();
     let mut nonterms = HashMap::new();
     let mut names = HashMap::new();
+    let mut first_line = true;
 
     for line in bnf.lines() {
         let line = &line.chars().filter(|c| !c.is_whitespace()).collect::<String>()[..];
-        //println!("{}", line);
+
         let mut chars = line.chars();
         if let Some(fst) = chars.next() {
             nonterms.entry(fst).or_insert_with(|| c.add_nonterminal());
@@ -39,12 +40,17 @@ pub fn from_str(bnf: &str) -> cfg::Cfg<cfg::Mutable> {
                     }
                 }
             }
-            if !seen_any {
-                c.add_rule(nonterms.get(&fst).unwrap(), &[EPSILON]);
+            let rule = if !seen_any {
+                c.add_rule(nonterms.get(&fst).unwrap(), &[EPSILON])
             } else {
-                c.add_rule(nonterms.get(&fst).unwrap(), &syms[..]);
+                c.add_rule(nonterms.get(&fst).unwrap(), &syms[..])
+            };
+
+            if first_line {
+                c.set_start(rule);
             }
         }
+        first_line = false;
     }
 
     c.mut_extra().insert::<BNFName>(names);

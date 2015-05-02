@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use cfg::{Symbol, Cfg, EPSILON, END_OF_INPUT};
+use cfg::{ll1, Symbol, Cfg, EPSILON, END_OF_INPUT};
 use cfg::util::{compute_first_of, Follow, compute_follow};
 
 use cfg::bnf::{from_str, to_string};
@@ -85,4 +85,34 @@ fn follow_is_correct() {
     let follow = cfg.extra().get::<Follow>().unwrap();
     let expected = vec![vec![END_OF_INPUT].into_iter().collect(), vec![e.into()].into_iter().collect(), vec![END_OF_INPUT, f.into()].into_iter().collect(), vec![END_OF_INPUT].into_iter().collect()];
     assert_eq!(follow, &expected);
+}
+
+#[test]
+fn can_make_ll1_table() {
+    let mut cfg = Cfg::new();
+    let s = cfg.add_nonterminal();
+    let a = cfg.add_nonterminal();
+    let b = cfg.add_nonterminal();
+    let c = cfg.add_nonterminal();
+
+    let d = cfg.add_terminal();
+    let e = cfg.add_terminal();
+    let f = cfg.add_terminal();
+
+    // Construct the grammar:
+    //
+    // S -> A B C
+    // A -> EPSILON | d
+    // B -> e
+    // C -> EPSILON | f
+
+    let _rs = cfg.add_rule(s, &[a, b, c]);
+    let _ra1 = cfg.add_rule(a, &[EPSILON]);
+    let _ra2 = cfg.add_rule(a, &[d]);
+    let _rb = cfg.add_rule(b, &[e]);
+    let _rc1 = cfg.add_rule(c, &[EPSILON]);
+    let _rc2 = cfg.add_rule(c, &[f]);
+
+    let mut cfg = cfg.freeze();
+    let _tab = ll1::generate_table(&mut cfg);
 }

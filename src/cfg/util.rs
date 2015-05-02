@@ -94,10 +94,15 @@ fn compute_first_of_symbol<T>(cfg: &Cfg<T>, set: &mut HashSet<PackedSymbol>, sym
 
 pub fn compute_first_of<'a, T, R>(cfg: &Cfg<T>, seq: &'a [R]) -> HashSet<PackedSymbol> where PackedSymbol: From<&'a R> {
     let mut first = HashSet::new();
+    let mut all_nullable = true;
     for sym in seq {
         if !compute_first_of_symbol(cfg, &mut first, sym.into()) {
+            all_nullable = false;
             break;
         }
+    }
+    if !all_nullable {
+        first.remove(&super::EPSILON);
     }
     first
 }

@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use cfg::{ll1, Symbol, Cfg, EPSILON, END_OF_INPUT, Token};
+use cfg::{ll1, Symbol, Cfg, EPSILON, END_OF_INPUT, Token, Rule};
 use cfg::util::{compute_first_of, Follow, compute_follow};
 
 use cfg::bnf::{from_str, to_string};
@@ -31,7 +31,10 @@ fn first_is_correct() {
     let _rc1 = cfg.add_rule(c, &[EPSILON]);
     let _rc2 = cfg.add_rule(c, &[f]);
 
-    assert_eq!(compute_first_of(&mut cfg, &[s]), vec![EPSILON, d.into(), e.into()].into_iter().collect());
+    assert_eq!(compute_first_of(&mut cfg, &[s]), vec![d.into(), e.into()].into_iter().collect());
+    //assert_eq!(compute_first_of(&mut cfg, &[a, b]), vec![].into_iter().collect());
+    //assert_eq!(compute_first_of(&mut cfg, &[b]), vec![].into_iter().collect());
+    //assert_eq!(compute_first_of(&mut cfg, &[c]), vec![].into_iter().collect());
     assert_eq!(compute_first_of(&mut cfg, &[a, c]), vec![EPSILON, d.into(), f.into()].into_iter().collect());
     assert!(compute_first_of::<_, Symbol>(&mut cfg, &[]).is_empty());
 }
@@ -114,7 +117,14 @@ fn can_make_ll1_table() {
     let _rc2 = cfg.add_rule(c, &[f]);
 
     let mut cfg = cfg.freeze();
-    let _tab = ll1::generate_table(&mut cfg);
+    let tab = ll1::generate_table(&mut cfg);
+    let expected_table = vec![
+        vec![None, None, Some(Rule(0)), Some(Rule(0)), None],
+        vec![None, Some(Rule(1)), Some(Rule(2)), Some(Rule(1)), None],
+        vec![None, None, None, Some(Rule(3)), None],
+        vec![Some(Rule(4)), Some(Rule(4)), None, None, Some(Rule(5))]
+    ];
+    assert_eq!(tab.table, expected_table);
 }
 
 #[test]
@@ -145,5 +155,7 @@ fn can_parse_ll1_string() {
 
     let mut cfg = cfg.freeze();
     let tab = ll1::generate_table(&mut cfg);
-    let derivation = ll1::parse(&tab, vec![&d as &Token, &e as &Token, &f as &Token]);
+    println!("{:?}", tab);
+    let derivation = ll1::parse(&tab, vec![&e as &Token]);
+    assert_eq!(derivation, vec![Rule(0), Rule(1), Rule(3), Rule(4)]);
 }

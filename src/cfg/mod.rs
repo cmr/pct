@@ -51,6 +51,7 @@
 
 pub mod marpa;
 pub mod util;
+pub mod bnf;
 
 /// A Symbol is either a non-terminal or a terminal.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

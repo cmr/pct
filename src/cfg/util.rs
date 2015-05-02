@@ -96,7 +96,6 @@ pub fn compute_first_of<'a, T, R>(cfg: &Cfg<T>, seq: &'a [R]) -> HashSet<PackedS
     let mut first = HashSet::new();
     for sym in seq {
         if !compute_first_of_symbol(cfg, &mut first, sym.into()) {
-            println!("Ok, giving up after FIRST of {:?}", PackedSymbol::from(sym));
             break;
         }
     }

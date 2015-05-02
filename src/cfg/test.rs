@@ -3,6 +3,8 @@
 use cfg::{Symbol, Cfg, EPSILON};
 use cfg::util::compute_first_of;
 
+use cfg::bnf::from_str;
+
 #[test]
 fn first_is_correct() {
     let mut cfg = Cfg::new();
@@ -32,4 +34,17 @@ fn first_is_correct() {
     assert_eq!(compute_first_of(&mut cfg, &[s]), vec![EPSILON, d.into(), e.into()].into_iter().collect());
     assert_eq!(compute_first_of(&mut cfg, &[a, c]), vec![EPSILON, d.into(), f.into()].into_iter().collect());
     assert!(compute_first_of::<_, Symbol>(&mut cfg, &[]).is_empty());
+}
+
+#[test]
+fn from_str_is_correct() {
+    let input = "S A B C
+A
+A d
+B e
+C
+C f";
+    let c = from_str(input);
+    print!("{:?}", c.rules().collect::<Vec<_>>());
+    assert!(false);
 }

@@ -13,18 +13,19 @@ pub fn from_str(bnf: &str) -> cfg::Cfg<cfg::Mutable> {
         //println!("{}", line);
         let mut chars = line.chars();
         if let Some(fst) = chars.next() {
-            nonterms.insert(fst, c.add_nonterminal());
+            nonterms.entry(fst).or_insert_with(|| c.add_nonterminal());
             let mut seen_any = false;
             let mut syms = Vec::new();
+
             for sym in chars {
                 seen_any = true;
                 match sym.is_uppercase() {
                     true => {
-                        nonterms.insert(sym, c.add_nonterminal());
+                        nonterms.entry(sym).or_insert_with(||c.add_nonterminal());
                         syms.push(*nonterms.get(&sym).unwrap());
                     },
                     false => {
-                        terms.insert(sym, c.add_terminal());
+                        terms.entry(sym).or_insert_with(|| c.add_terminal());
                         syms.push(*terms.get(&sym).unwrap());
                     }
                 }

@@ -3,7 +3,7 @@
 use cfg::{Symbol, Cfg, EPSILON, END_OF_INPUT};
 use cfg::util::{compute_first_of, Follow, compute_follow};
 
-use cfg::bnf::from_str;
+use cfg::bnf::{from_str, to_string};
 
 #[test]
 fn first_is_correct() {
@@ -45,8 +45,12 @@ B e
 C
 C f";
     let c = from_str(input);
-    print!("{:?}", c.rules().collect::<Vec<_>>());
-    assert!(false);
+    assert_eq!("S -> ABC
+A -> ε
+A -> d
+B -> e
+C -> ε
+C -> f", to_string(&c));
 }
 
 #[test]
